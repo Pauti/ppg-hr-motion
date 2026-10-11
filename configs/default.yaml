@@ -1,0 +1,67 @@
+seed: 42
+
+dataset:
+  physionet_slug: pulse-transit-time-ppg
+  version: 1.1.0
+  raw_dir: data/raw
+  fs: 500                 # Hz, all channels are stored at this rate
+
+signals:
+  # Green LED, distal phalanx. Green is used because the dataset README is
+  # inconsistent about which of pleth_1/pleth_2 is red vs. infrared, while
+  # pleth_3/pleth_6 are described as green in both places.
+  ppg: pleth_3
+  # The WFDB headers list the unit as "g", but |a| at rest is ~9.6, i.e. m/s^2.
+  accel: [a_x, a_y, a_z]
+  # The sensor reports received light, so a pulse shows up as an intensity drop.
+  # Checked against ECG-triggered averages: after inversion the steep edge is
+  # the rising one and the maximum lies ~300-450 ms after the R-peak.
+  invert_ppg: true
+
+preprocessing:
+  fs_target: 50           # Hz after decimation
+  bandpass_hz: [0.5, 4.0]
+  filter_order: 3
+
+windows:
+  length_s: 8.0
+  step_s: 2.0
+  processed_path: data/processed/windows.npz
+
+labels:
+  # Reference HR comes from the annotated ECG R-peaks (.atr files).
+  min_rr_s: 0.27          # ~220 bpm
+  max_rr_s: 2.0           # 30 bpm
+  max_rr_deviation: 0.35  # drop windows where an RR interval deviates >35% from the window median
+
+baseline:
+  hr_range_bpm: [40, 210]
+  peak_prominence: 0.3    # relative to window std after z-scoring
+  nfft: 2048
+  imu_mask_bpm: 6         # PPG spectral peaks closer than this to an accel peak are discarded
+  imu_mask_peaks: 2
+  imu_motion_threshold: 0.2  # m/s^2, std of |a| per window; sitting is ~0.02-0.06
+
+splits:
+  n_folds: 5              # subject-wise; each fold: 1 test group, 1 val group, rest train
+  path: results/splits.json
+
+training:
+  models: [cnn, cnn_imu, lstm]
+  epochs: 60
+  batch_size: 64
+  learning_rate: 0.001
+  early_stopping_patience: 10
+  model_dir: results/models
+
+evaluation:
+  predictions_dir: results/predictions
+  tables_dir: results/tables
+  figures_dir: results/figures
+
+export:
+  model: cnn
+  fold: 0
+  out_dir: results/tflite
+  representative_windows: 500
+  latency_runs: 200

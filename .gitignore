@@ -1,0 +1,23 @@
+# environments
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# data is downloaded with scripts/download_data.py
+data/
+
+# trained Keras checkpoints are reproducible from scripts/train.py;
+# figures, tables, predictions and the small .tflite files are kept
+results/models/
+
+# personal notes
+ADD_NOTES.md
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
